@@ -840,3 +840,37 @@ test("extractSingle with multiply-nested belongsTo", function() {
   equal(env.store.recordForId("superVillain", "1").get("firstName"), "Tom", "Secondary record, Tom, found in the steore");
   equal(env.store.recordForId("homePlanet", "1").get("name"), "Umber", "Nested Secondary record, Umber, found in the store");
 });
+
+test("embedded mixin does not require keyForAttribute or keyForRelationship functions to embed objects", function() {
+  env.container.register('adapter:superVillain', DS.ActiveModelAdapter);
+  env.container.register('serializer:homePlanet', DS.RESTSerializer.extend(DS.EmbeddedRecordsMixin, {
+    attrs: {
+      villains: {embedded: 'always'}
+    }
+  }));
+
+  var serializer = env.container.lookup("serializer:homePlanet");
+  var json_hash = {
+    home_planet: {
+      id: "1",
+      name: "Umber",
+      villains: [{
+        id: "1",
+        first_name: "Tom",
+        last_name: "Dale"
+      }]
+    }
+  };
+
+  var json = serializer.extractSingle(env.store, HomePlanet, json_hash);
+
+  deepEqual(json, {
+    id: "1",
+    name: "Umber",
+    villains: ["1"]
+  });
+  env.store.find("superVillain", 1).then(async(function(minion) {
+    equal(minion.get('firstName'), "Tom");
+  }));
+
+});
